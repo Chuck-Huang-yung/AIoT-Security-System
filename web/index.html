@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIoT 智慧安防監控</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 800: '#1a1a2e', 700: '#16213e', 600: '#0f3460' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        .card { backdrop-filter: blur(10px); }
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+    </style>
+</head>
+<body class="dark bg-gray-950 text-gray-100 min-h-screen">
+
+<!-- Header -->
+<header class="border-b border-gray-800 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-xl">🏠</div>
+            <div>
+                <h1 class="text-xl font-bold">AIoT 智慧安防監控</h1>
+                <p class="text-sm text-gray-400">Raspberry Pi + ESP32</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="mqtt-status-dot" class="w-3 h-3 rounded-full bg-red-500 pulse-dot"></span>
+            <span id="mqtt-status-text" class="text-sm text-gray-400">未連線</span>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+    <!-- 即時截圖 -->
+    <div class="card bg-gray-900 rounded-2xl p-6 border border-gray-800 md:col-span-2">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">📷</span>
+            <h2 class="font-semibold">即時截圖</h2>
+        </div>
+        <div id="snapshot-container" class="bg-gray-800 rounded-xl flex items-center justify-center min-h-[300px] overflow-hidden">
+            <p class="text-gray-500">等待攝影機截圖...</p>
+        </div>
+        <p id="snapshot-time" class="text-xs text-gray-500 mt-2"></p>
+    </div>
+
+    <!-- 亮度感測 -->
+    <div class="card bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">☀️</span>
+            <h2 class="font-semibold">環境亮度</h2>
+            <span class="text-xs text-gray-500 ml-auto">ESP32</span>
+        </div>
+        <div class="text-center py-6">
+            <p id="light-value" class="text-5xl font-bold text-yellow-400">--</p>
+            <p class="text-sm text-gray-400 mt-2">ADC 值 (0-4095)</p>
+        </div>
+        <div class="w-full bg-gray-800 rounded-full h-3 mt-4">
+            <div id="light-bar" class="bg-yellow-400 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- 燈光控制 -->
+    <div class="card bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">💡</span>
+            <h2 class="font-semibold">燈光控制</h2>
+            <span class="text-xs text-gray-500 ml-auto">ESP32</span>
+        </div>
+        <div class="text-center py-6">
+            <div id="light-icon" class="text-6xl mb-2">🌑</div>
+            <p id="light-status-text" class="text-gray-400">關閉</p>
+        </div>
+        <div class="flex gap-3 mt-4">
+            <button onclick="controlLight('on')"
+                class="flex-1 bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-medium transition">
+                開燈
+            </button>
+            <button onclick="controlLight('off')"
+                class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl font-medium transition">
+                關燈
+            </button>
+        </div>
+    </div>
+
+    <!-- 警報記錄 -->
+    <div class="card bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">🚨</span>
+            <h2 class="font-semibold">警報記錄</h2>
+            <span id="alert-count" class="ml-auto bg-red-600 text-xs px-2 py-1 rounded-full">0</span>
+        </div>
+        <div id="alert-list" class="space-y-3 max-h-[300px] overflow-y-auto">
+            <p class="text-gray-500 text-sm">尚無警報</p>
+        </div>
+    </div>
+
+    <!-- 系統狀態 -->
+    <div class="card bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">📊</span>
+            <h2 class="font-semibold">系統狀態</h2>
+            <span class="text-xs text-gray-500 ml-auto">RPi</span>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="text-gray-400">CPU 溫度</span>
+                    <span id="cpu-temp" class="text-orange-400">--°C</span>
+                </div>
+                <div class="w-full bg-gray-800 rounded-full h-2">
+                    <div id="cpu-temp-bar" class="bg-orange-400 h-2 rounded-full transition-all" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-400">運行時間</span>
+                <span id="uptime" class="text-blue-400">--</span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-400">最後更新</span>
+                <span id="last-update" class="text-gray-500">--</span>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<!-- MQTT 設定 Modal -->
+<div id="settings-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-gray-900 rounded-2xl p-8 border border-gray-700 w-full max-w-md mx-4">
+        <h2 class="text-xl font-bold mb-6">MQTT 連線設定</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Broker 位址</label>
+                <input id="cfg-broker" type="text" placeholder="xxx.hivemq.cloud"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">WebSocket Port</label>
+                <input id="cfg-port" type="number" value="8884"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">帳號</label>
+                <input id="cfg-username" type="text"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">密碼</label>
+                <input id="cfg-password" type="password"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+        </div>
+        <button onclick="connectMQTT()"
+            class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-medium mt-6 transition">
+            連線
+        </button>
+    </div>
+</div>
+
+<script>
+// --- 全域狀態 ---
+let mqttClient = null;
+let alertCount = 0;
+
+// --- 從 localStorage 載入設定 ---
+function loadConfig() {
+    document.getElementById('cfg-broker').value = localStorage.getItem('mqtt_broker') || '';
+    document.getElementById('cfg-port').value = localStorage.getItem('mqtt_port') || '8884';
+    document.getElementById('cfg-username').value = localStorage.getItem('mqtt_username') || '';
+    document.getElementById('cfg-password').value = localStorage.getItem('mqtt_password') || '';
+}
+
+// --- MQTT 連線 ---
+function connectMQTT() {
+    const broker = document.getElementById('cfg-broker').value.trim();
+    const port = parseInt(document.getElementById('cfg-port').value);
+    const username = document.getElementById('cfg-username').value.trim();
+    const password = document.getElementById('cfg-password').value;
+
+    if (!broker || !username) {
+        alert('請填寫 Broker 位址和帳號');
+        return;
+    }
+
+    // 儲存設定
+    localStorage.setItem('mqtt_broker', broker);
+    localStorage.setItem('mqtt_port', port);
+    localStorage.setItem('mqtt_username', username);
+    localStorage.setItem('mqtt_password', password);
+
+    const url = `wss://${broker}:${port}/mqtt`;
+    mqttClient = mqtt.connect(url, {
+        username: username,
+        password: password,
+        clientId: 'dashboard-' + Math.random().toString(16).substr(2, 6),
+    });
+
+    mqttClient.on('connect', () => {
+        console.log('[MQTT] 已連線');
+        setStatus(true);
+        document.getElementById('settings-modal').classList.add('hidden');
+
+        // 訂閱所有 topic
+        mqttClient.subscribe('home/security/alert');
+        mqttClient.subscribe('home/security/snapshot');
+        mqttClient.subscribe('home/sensor/light');
+        mqttClient.subscribe('home/light/status');
+        mqttClient.subscribe('home/system/status');
+    });
+
+    mqttClient.on('error', (err) => {
+        console.error('[MQTT] 錯誤:', err);
+        setStatus(false);
+    });
+
+    mqttClient.on('offline', () => setStatus(false));
+    mqttClient.on('message', handleMessage);
+}
+
+// --- 處理 MQTT 訊息 ---
+function handleMessage(topic, message) {
+    let payload;
+    try {
+        payload = JSON.parse(message.toString());
+    } catch {
+        payload = message.toString();
+    }
+
+    switch (topic) {
+        case 'home/sensor/light':
+            updateLight(payload);
+            break;
+        case 'home/light/status':
+            updateLightStatus(payload);
+            break;
+        case 'home/security/alert':
+            addAlert(payload);
+            break;
+        case 'home/security/snapshot':
+            updateSnapshot(payload);
+            break;
+        case 'home/system/status':
+            updateSystemStatus(payload);
+            break;
+    }
+    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+}
+
+// --- UI 更新函式 ---
+function updateLight(data) {
+    const value = data.value || 0;
+    document.getElementById('light-value').textContent = value;
+    const percent = Math.round((value / 4095) * 100);
+    document.getElementById('light-bar').style.width = percent + '%';
+}
+
+function updateLightStatus(data) {
+    const isOn = data.status === 'on';
+    document.getElementById('light-icon').textContent = isOn ? '💡' : '🌑';
+    document.getElementById('light-status-text').textContent = isOn ? '開啟' : '關閉';
+}
+
+function updateSnapshot(data) {
+    const container = document.getElementById('snapshot-container');
+    const imgData = data.image || data;
+    container.innerHTML = `<img src="data:image/jpeg;base64,${imgData}" class="w-full rounded-xl" alt="snapshot">`;
+    document.getElementById('snapshot-time').textContent = '截圖時間: ' + (data.timestamp || new Date().toLocaleTimeString());
+}
+
+function addAlert(data) {
+    alertCount++;
+    document.getElementById('alert-count').textContent = alertCount;
+    const list = document.getElementById('alert-list');
+    if (alertCount === 1) list.innerHTML = '';
+
+    const time = data.timestamp || new Date().toLocaleTimeString();
+    const confidence = data.confidence ? ` (${Math.round(data.confidence * 100)}%)` : '';
+    const item = document.createElement('div');
+    item.className = 'bg-red-950 border border-red-800 rounded-lg p-3';
+    item.innerHTML = `
+        <div class="flex items-center gap-2">
+            <span class="text-red-400 text-sm font-medium">⚠️ 偵測到入侵${confidence}</span>
+            <span class="text-xs text-gray-500 ml-auto">${time}</span>
+        </div>
+    `;
+    list.insertBefore(item, list.firstChild);
+}
+
+function updateSystemStatus(data) {
+    if (data.cpu_temp !== undefined) {
+        document.getElementById('cpu-temp').textContent = data.cpu_temp + '°C';
+        const percent = Math.min(Math.round((data.cpu_temp / 85) * 100), 100);
+        document.getElementById('cpu-temp-bar').style.width = percent + '%';
+    }
+    if (data.uptime) {
+        document.getElementById('uptime').textContent = data.uptime;
+    }
+}
+
+// --- 控制函式 ---
+function controlLight(action) {
+    if (!mqttClient || !mqttClient.connected) {
+        alert('MQTT 未連線');
+        return;
+    }
+    mqttClient.publish('home/light/control', JSON.stringify({ action }));
+}
+
+function setStatus(connected) {
+    const dot = document.getElementById('mqtt-status-dot');
+    const text = document.getElementById('mqtt-status-text');
+    dot.className = `w-3 h-3 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'} pulse-dot`;
+    text.textContent = connected ? '已連線' : '未連線';
+}
+
+// --- 初始化 ---
+loadConfig();
+</script>
+</body>
+</html>
