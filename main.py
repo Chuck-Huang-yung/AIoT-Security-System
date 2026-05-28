@@ -63,8 +63,8 @@ def security_loop():
                     image_base64=img_base64,
                 )
 
-                # 冷卻時間，避免連續觸發
-                time.sleep(10)
+                # 冷卻時間，SR505 不可重觸發延遲約 8 秒
+                time.sleep(8)
             else:
                 time.sleep(0.5)
         else:

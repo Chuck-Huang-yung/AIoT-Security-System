@@ -1,4 +1,4 @@
-"""PIR 紅外線感測器模組"""
+"""PIR 紅外線感測器模組（HW-456 SR505）"""
 
 import config
 
@@ -36,9 +36,9 @@ def on_motion(callback):
         config.PIR_PIN,
         GPIO.RISING,
         callback=callback,
-        bouncetime=2000,
+        bouncetime=8000,  # SR505 不可重觸發延遲約 8 秒
     )
-    print("[PIR] 已註冊移動偵測回調")
+    print("[PIR] 已註冊移動偵測回調 (SR505)")
 
 
 def cleanup():
