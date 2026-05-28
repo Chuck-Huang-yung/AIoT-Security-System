@@ -16,8 +16,8 @@ def setup():
     if MOCK_MODE:
         return
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(config.PIR_PIN, GPIO.IN)
-    print(f"[PIR] 已初始化，GPIO {config.PIR_PIN}")
+    GPIO.setup(config.PIR_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    print(f"[PIR] 已初始化，GPIO {config.PIR_PIN}（pull-down）")
 
 
 def detect():

@@ -1,14 +1,14 @@
 """ESP32 MicroPython 設定檔"""
 
 # --- WiFi ---
-WIFI_SSID = "your_wifi_ssid"
-WIFI_PASSWORD = "your_wifi_password"
+WIFI_SSID = "奶昔是隻薩摩耶"
+WIFI_PASSWORD = "123456789"
 
 # --- MQTT (HiveMQ Cloud) ---
-MQTT_BROKER = "your-cluster.hivemq.cloud"
+MQTT_BROKER = "068e8edd005b4906afea0dfa79bc96c7.s1.eu.hivemq.cloud"
 MQTT_PORT = 8883
-MQTT_USERNAME = "your_username"
-MQTT_PASSWORD = "your_password"
+MQTT_USERNAME = "aiot_final"
+MQTT_PASSWORD = "a1234A1234"
 MQTT_CLIENT_ID = "esp32-light"
 MQTT_USE_SSL = True
 

@@ -8,12 +8,8 @@ import cv2
 
 import config
 
-# 嘗試載入 picamera2，若失敗則用 OpenCV VideoCapture
-try:
-    from picamera2 import Picamera2
-    USE_PICAMERA = True
-except ImportError:
-    USE_PICAMERA = False
+# USB Webcam 直接用 OpenCV
+USE_PICAMERA = False
 
 _camera = None
 
