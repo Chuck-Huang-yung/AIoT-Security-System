@@ -25,48 +25,48 @@ def security_loop():
     pir.setup()
     capture.init()
 
+    COOLDOWN = 15  # 冷卻時間（秒），避免重複觸發
+
     while running:
         if pir.detect():
             print("[安防] PIR 偵測到移動！")
+
             frame = capture.capture_frame()
-            if frame is None:
-                time.sleep(1)
-                continue
+            if frame is not None:
+                detected, boxes, confidence = detector.detect_person(frame)
 
-            detected, boxes, confidence = detector.detect_person(frame)
+                if detected:
+                    print(f"[安防] 偵測到人形！信心值: {confidence:.2f}")
 
-            if detected:
-                print(f"[安防] 偵測到人形！信心值: {confidence:.2f}")
+                    # 繪製偵測框並截圖
+                    frame = detector.draw_boxes(frame, boxes)
+                    img_base64 = capture.capture_to_base64(frame)
+                    capture.save_snapshot(frame)
 
-                # 繪製偵測框並截圖
-                frame = detector.draw_boxes(frame, boxes)
-                img_base64 = capture.capture_to_base64(frame)
-                capture.save_snapshot(frame)
+                    timestamp = datetime.now().isoformat()
 
-                timestamp = datetime.now().isoformat()
+                    # MQTT 發布警報
+                    mqtt_client.publish(config.TOPIC_SECURITY_ALERT, {
+                        "timestamp": timestamp,
+                        "confidence": round(confidence, 2),
+                    })
 
-                # MQTT 發布警報
-                mqtt_client.publish(config.TOPIC_SECURITY_ALERT, {
-                    "timestamp": timestamp,
-                    "confidence": round(confidence, 2),
-                })
+                    # MQTT 發布截圖
+                    mqtt_client.publish(config.TOPIC_SECURITY_SNAPSHOT, {
+                        "timestamp": timestamp,
+                        "image": img_base64,
+                    })
 
-                # MQTT 發布截圖
-                mqtt_client.publish(config.TOPIC_SECURITY_SNAPSHOT, {
-                    "timestamp": timestamp,
-                    "image": img_base64,
-                })
+                    # Discord 通知
+                    discord_bot.send_alert(
+                        f"偵測到入侵！信心值: {confidence:.0%}",
+                        image_base64=img_base64,
+                    )
+                else:
+                    print("[安防] 未偵測到人形，忽略")
 
-                # Discord 通知
-                discord_bot.send_alert(
-                    f"偵測到入侵！信心值: {confidence:.0%}",
-                    image_base64=img_base64,
-                )
-
-                # 冷卻時間，SR505 不可重觸發延遲約 8 秒
-                time.sleep(8)
-            else:
-                time.sleep(0.5)
+            # 不管結果，觸發後強制冷卻
+            time.sleep(COOLDOWN)
         else:
             time.sleep(0.5)
 

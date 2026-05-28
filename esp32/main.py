@@ -14,6 +14,9 @@ led = Pin(config.LED_PIN, Pin.OUT)
 led.value(0)
 
 led_status = "off"
+manual_override = False  # 手動控制時暫停自動模式
+manual_override_time = 0  # 手動控制時間戳
+MANUAL_OVERRIDE_DURATION = 60  # 手動控制持續 60 秒後恢復自動
 
 
 # --- MQTT 連線 ---
@@ -50,11 +53,18 @@ def on_message(topic, msg):
         if action == "on":
             led.value(1)
             led_status = "on"
+            manual_override = True
+            manual_override_time = time.time()
             print("[LED] 手動開燈")
         elif action == "off":
             led.value(0)
             led_status = "off"
+            manual_override = True
+            manual_override_time = time.time()
             print("[LED] 手動關燈")
+        elif action == "auto":
+            manual_override = False
+            print("[LED] 恢復自動模式")
         publish_light_status(mqtt_client)
 
 
@@ -76,30 +86,36 @@ mqtt_client = connect_mqtt()
 
 while True:
     try:
-        # 檢查 MQTT 訊息（非阻塞）
-        mqtt_client.check_msg()
-
         # 讀取光敏電阻 ADC 值（0-4095，值越小越暗）
         ldr_value = ldr.read()
 
-        # 自動控制 LED
-        if ldr_value < config.LIGHT_THRESHOLD:
-            if led_status == "off":
-                led.value(1)
-                led_status = "on"
-                print(f"[LED] 自動開燈（亮度: {ldr_value}）")
-                publish_light_status(mqtt_client)
-        else:
-            if led_status == "on":
-                led.value(0)
-                led_status = "off"
-                print(f"[LED] 自動關燈（亮度: {ldr_value}）")
-                publish_light_status(mqtt_client)
+        # 手動覆蓋超時，恢復自動模式
+        if manual_override and (time.time() - manual_override_time > MANUAL_OVERRIDE_DURATION):
+            manual_override = False
+            print("[LED] 手動控制超時，恢復自動模式")
+
+        # 自動控制 LED（手動模式下不執行）
+        if not manual_override:
+            if ldr_value < config.LIGHT_THRESHOLD:
+                if led_status == "off":
+                    led.value(1)
+                    led_status = "on"
+                    print(f"[LED] 自動開燈（亮度: {ldr_value}）")
+                    publish_light_status(mqtt_client)
+            else:
+                if led_status == "on":
+                    led.value(0)
+                    led_status = "off"
+                    print(f"[LED] 自動關燈（亮度: {ldr_value}）")
+                    publish_light_status(mqtt_client)
 
         # 定時發布亮度數據
         publish_light_data(mqtt_client, ldr_value)
 
-        time.sleep(config.PUBLISH_INTERVAL)
+        # 每秒檢查 MQTT 訊息，每 PUBLISH_INTERVAL 秒發布數據
+        for _ in range(config.PUBLISH_INTERVAL):
+            mqtt_client.check_msg()
+            time.sleep(1)
 
     except OSError as e:
         print(f"[錯誤] {e}，嘗試重新連線...")

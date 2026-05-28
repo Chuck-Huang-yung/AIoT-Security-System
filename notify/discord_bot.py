@@ -49,7 +49,7 @@ def send_alert(message, image_base64=None):
             json=payload,
         )
 
-    if response.status_code == 204:
+    if response.status_code in (200, 204):
         print(f"[Discord] 警報已發送: {message}")
         return True
     else:
