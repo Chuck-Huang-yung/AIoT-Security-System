@@ -9,66 +9,75 @@ from datetime import datetime
 
 import config
 from mqtt.client import MQTTClient
-from sensors import pir
 from camera import capture, detector
 from notify import discord_bot
 
 
 mqtt_client = MQTTClient()
 running = True
+pir_triggered = threading.Event()
 
 
 def security_loop():
-    """安防線路：PIR 偵測 → 攝影機 → OpenCV → MQTT + Discord"""
-    print("[安防] 線路啟動")
+    """安防線路：等待 PIR MQTT 觸發 → 攝影機 → OpenCV → MQTT + Discord"""
+    print("[安防] 線路啟動（等待 ESP32 PIR 觸發）")
 
-    pir.setup()
     capture.init()
-
-    COOLDOWN = 15  # 冷卻時間（秒），避免重複觸發
+    COOLDOWN = 15
 
     while running:
-        if pir.detect():
-            print("[安防] PIR 偵測到移動！")
+        # 等待 ESP32 PIR 觸發訊號
+        if pir_triggered.wait(timeout=1):
+            pir_triggered.clear()
+            print("[安防] 收到 PIR 觸發訊號！")
 
-            frame = capture.capture_frame()
-            if frame is not None:
+            # 多幀驗證：連拍 3 張，至少 2 張偵測到人才算
+            detect_count = 0
+            best_frame = None
+            best_boxes = []
+            best_confidence = 0
+
+            for attempt in range(3):
+                frame = capture.capture_frame()
+                if frame is None:
+                    continue
                 detected, boxes, confidence = detector.detect_person(frame)
-
                 if detected:
-                    print(f"[安防] 偵測到人形！信心值: {confidence:.2f}")
+                    detect_count += 1
+                    if confidence > best_confidence:
+                        best_frame = frame
+                        best_boxes = boxes
+                        best_confidence = confidence
+                time.sleep(0.3)
 
-                    # 繪製偵測框並截圖
-                    frame = detector.draw_boxes(frame, boxes)
-                    img_base64 = capture.capture_to_base64(frame)
-                    capture.save_snapshot(frame)
+            if detect_count >= 2 and best_frame is not None:
+                print(f"[安防] 偵測到人形！信心值: {best_confidence:.2f}（{detect_count}/3 幀通過）")
 
-                    timestamp = datetime.now().isoformat()
+                best_frame = detector.draw_boxes(best_frame, best_boxes)
+                img_base64 = capture.capture_to_base64(best_frame)
+                capture.save_snapshot(best_frame)
 
-                    # MQTT 發布警報
-                    mqtt_client.publish(config.TOPIC_SECURITY_ALERT, {
-                        "timestamp": timestamp,
-                        "confidence": round(confidence, 2),
-                    })
+                timestamp = datetime.now().isoformat()
 
-                    # MQTT 發布截圖
-                    mqtt_client.publish(config.TOPIC_SECURITY_SNAPSHOT, {
-                        "timestamp": timestamp,
-                        "image": img_base64,
-                    })
+                mqtt_client.publish(config.TOPIC_SECURITY_ALERT, {
+                    "timestamp": timestamp,
+                    "confidence": round(best_confidence, 2),
+                })
 
-                    # Discord 通知
-                    discord_bot.send_alert(
-                        f"偵測到入侵！信心值: {confidence:.0%}",
-                        image_base64=img_base64,
-                    )
-                else:
-                    print("[安防] 未偵測到人形，忽略")
+                mqtt_client.publish(config.TOPIC_SECURITY_SNAPSHOT, {
+                    "timestamp": timestamp,
+                    "image": img_base64,
+                })
 
-            # 不管結果，觸發後強制冷卻
+                discord_bot.send_alert(
+                    f"偵測到入侵！信心值: {best_confidence:.0%}",
+                    image_base64=img_base64,
+                )
+            else:
+                print(f"[安防] 未確認人形（{detect_count}/3 幀），忽略")
+
+            # 強制冷卻
             time.sleep(COOLDOWN)
-        else:
-            time.sleep(0.5)
 
 
 def system_status_loop():
@@ -77,14 +86,12 @@ def system_status_loop():
 
     while running:
         try:
-            # 讀取 CPU 溫度（RPi）
             try:
                 with open("/sys/class/thermal/thermal_zone0/temp") as f:
                     cpu_temp = round(int(f.read().strip()) / 1000, 1)
             except FileNotFoundError:
                 cpu_temp = 0
 
-            # 讀取 uptime
             try:
                 with open("/proc/uptime") as f:
                     uptime_seconds = int(float(f.read().split()[0]))
@@ -106,6 +113,12 @@ def system_status_loop():
         time.sleep(config.SYSTEM_STATUS_INTERVAL)
 
 
+def on_pir_trigger(topic, payload):
+    """收到 ESP32 PIR 觸發訊號"""
+    print(f"[MQTT] 收到 PIR 觸發: {payload}")
+    pir_triggered.set()
+
+
 def on_light_control(topic, payload):
     """處理來自 Dashboard 的控燈指令（轉發，實際控制在 ESP32）"""
     print(f"[MQTT] 收到控燈指令: {payload}")
@@ -117,7 +130,6 @@ def shutdown(signum, frame):
     print("\n[系統] 正在關閉...")
     running = False
     capture.release()
-    pir.cleanup()
     mqtt_client.disconnect()
     sys.exit(0)
 
@@ -134,10 +146,13 @@ def main():
     mqtt_client.connect()
     time.sleep(2)
 
-    # 訂閱控燈指令（監聽用，實際控制在 ESP32）
+    # 訂閱 ESP32 PIR 觸發訊號
+    mqtt_client.subscribe(config.TOPIC_SECURITY_PIR, on_pir_trigger)
+
+    # 訂閱控燈指令（監聽用）
     mqtt_client.subscribe(config.TOPIC_LIGHT_CONTROL, on_light_control)
 
-    # 啟動 Discord 上線通知
+    # Discord 上線通知
     discord_bot.send_status("RPi 安防系統已上線")
 
     # 啟動安防線路
@@ -150,7 +165,6 @@ def main():
 
     print("[系統] 所有線路已啟動，按 Ctrl+C 停止")
 
-    # 主迴圈保持程式運行
     while running:
         time.sleep(1)
 

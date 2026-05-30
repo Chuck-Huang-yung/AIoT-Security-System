@@ -1,4 +1,4 @@
-"""ESP32 主程式 — 光敏感測器 + LED 自動控制 + MQTT"""
+"""ESP32 主程式 — PIR 偵測 + 光敏判斷開燈 + MQTT"""
 
 import json
 import time
@@ -13,15 +13,20 @@ ldr.atten(ADC.ATTN_11DB)  # 量測範圍 0-3.3V，ADC 值 0-4095
 led = Pin(config.LED_PIN, Pin.OUT)
 led.value(0)
 
+pir = Pin(config.PIR_PIN, Pin.IN, Pin.PULL_DOWN)
+
 led_status = "off"
-manual_override = False  # 手動控制時暫停自動模式
-manual_override_time = 0  # 手動控制時間戳
-MANUAL_OVERRIDE_DURATION = 60  # 手動控制持續 60 秒後恢復自動
+manual_override = False
+manual_override_time = 0
+MANUAL_OVERRIDE_DURATION = 60
+
+PIR_COOLDOWN = 10
+last_pir_time = 0
+last_publish_time = 0
 
 
 # --- MQTT 連線 ---
 def connect_mqtt():
-    """連線到 HiveMQ Cloud MQTT Broker"""
     from lib.umqtt_simple import MQTTClient
 
     client = MQTTClient(
@@ -40,8 +45,7 @@ def connect_mqtt():
 
 
 def on_message(topic, msg):
-    """處理收到的 MQTT 控燈指令"""
-    global led_status
+    global led_status, manual_override, manual_override_time
     topic = topic.decode()
     try:
         payload = json.loads(msg.decode())
@@ -69,53 +73,71 @@ def on_message(topic, msg):
 
 
 def publish_light_data(client, ldr_value):
-    """發布亮度數據"""
     payload = json.dumps({"value": ldr_value})
     client.publish(config.TOPIC_SENSOR_LIGHT, payload)
 
 
 def publish_light_status(client):
-    """發布燈光狀態"""
     payload = json.dumps({"status": led_status})
     client.publish(config.TOPIC_LIGHT_STATUS, payload)
 
 
+def set_led(client, on):
+    """控制 LED 並發布狀態"""
+    global led_status
+    if on and led_status == "off":
+        led.value(1)
+        led_status = "on"
+        print("[LED] 自動開燈（PIR + 暗）")
+        publish_light_status(client)
+    elif not on and led_status == "on":
+        led.value(0)
+        led_status = "off"
+        print("[LED] 自動關燈（無人）")
+        publish_light_status(client)
+
+
 # --- 主迴圈 ---
-print("[系統] ESP32 照明線路啟動")
+print("[系統] ESP32 PIR + 照明線路啟動")
 mqtt_client = connect_mqtt()
 
 while True:
     try:
-        # 讀取光敏電阻 ADC 值（0-4095，值越小越暗）
         ldr_value = ldr.read()
+        pir_value = pir.value()
+        now = time.time()
 
-        # 手動覆蓋超時，恢復自動模式
-        if manual_override and (time.time() - manual_override_time > MANUAL_OVERRIDE_DURATION):
+        # 手動覆蓋超時，恢復自動
+        if manual_override and (now - manual_override_time > MANUAL_OVERRIDE_DURATION):
             manual_override = False
             print("[LED] 手動控制超時，恢復自動模式")
 
-        # 自動控制 LED（手動模式下不執行）
+        # 自動控制（手動模式下跳過）
         if not manual_override:
-            if ldr_value < config.LIGHT_THRESHOLD:
-                if led_status == "off":
-                    led.value(1)
-                    led_status = "on"
-                    print(f"[LED] 自動開燈（亮度: {ldr_value}）")
-                    publish_light_status(mqtt_client)
+            if pir_value == 1:
+                # 有人 + 暗 → 開燈
+                if ldr_value < config.LIGHT_THRESHOLD:
+                    set_led(mqtt_client, True)
+                # 有人 + 亮 → 不需要開燈
             else:
-                if led_status == "on":
-                    led.value(0)
-                    led_status = "off"
-                    print(f"[LED] 自動關燈（亮度: {ldr_value}）")
-                    publish_light_status(mqtt_client)
+                # 沒人 → 關燈
+                set_led(mqtt_client, False)
+
+        # PIR 觸發 → 發 MQTT 通知 RPi 拍照
+        if pir_value == 1 and (now - last_pir_time >= PIR_COOLDOWN):
+            last_pir_time = now
+            print("[PIR] 偵測到移動！發布 MQTT")
+            payload = json.dumps({"triggered": True, "timestamp": now})
+            mqtt_client.publish(config.TOPIC_SECURITY_PIR, payload)
 
         # 定時發布亮度數據
-        publish_light_data(mqtt_client, ldr_value)
+        if now - last_publish_time >= config.PUBLISH_INTERVAL:
+            last_publish_time = now
+            publish_light_data(mqtt_client, ldr_value)
 
-        # 每秒檢查 MQTT 訊息，每 PUBLISH_INTERVAL 秒發布數據
-        for _ in range(config.PUBLISH_INTERVAL):
-            mqtt_client.check_msg()
-            time.sleep(1)
+        # 每秒檢查 MQTT 訊息
+        mqtt_client.check_msg()
+        time.sleep(1)
 
     except OSError as e:
         print(f"[錯誤] {e}，嘗試重新連線...")

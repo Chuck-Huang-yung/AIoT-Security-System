@@ -61,6 +61,23 @@
         <p id="snapshot-time" class="text-xs text-gray-500 mt-2"></p>
     </div>
 
+    <!-- PIR 狀態 -->
+    <div class="card bg-gray-900 rounded-2xl p-6 border border-gray-800">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">📡</span>
+            <h2 class="font-semibold">PIR 感測器</h2>
+            <span class="text-xs text-gray-500 ml-auto">ESP32</span>
+        </div>
+        <div class="text-center py-6">
+            <div id="pir-icon" class="text-6xl mb-2">🟢</div>
+            <p id="pir-status-text" class="text-2xl font-bold text-green-400">安全 (0)</p>
+        </div>
+        <div class="flex justify-between text-sm mt-4">
+            <span class="text-gray-400">最後觸發</span>
+            <span id="pir-last-trigger" class="text-gray-500">--</span>
+        </div>
+    </div>
+
     <!-- 亮度感測 -->
     <div class="card bg-gray-900 rounded-2xl p-6 border border-gray-800">
         <div class="flex items-center gap-2 mb-4">
@@ -221,6 +238,7 @@ function connectMQTT() {
         // 訂閱所有 topic
         mqttClient.subscribe('home/security/alert');
         mqttClient.subscribe('home/security/snapshot');
+        mqttClient.subscribe('home/security/pir');
         mqttClient.subscribe('home/sensor/light');
         mqttClient.subscribe('home/light/status');
         mqttClient.subscribe('home/system/status');
@@ -256,6 +274,9 @@ function handleMessage(topic, message) {
             break;
         case 'home/security/snapshot':
             updateSnapshot(payload);
+            break;
+        case 'home/security/pir':
+            updatePIR(payload);
             break;
         case 'home/system/status':
             updateSystemStatus(payload);
@@ -302,6 +323,22 @@ function addAlert(data) {
         </div>
     `;
     list.insertBefore(item, list.firstChild);
+}
+
+let pirTimer = null;
+function updatePIR(data) {
+    document.getElementById('pir-icon').textContent = '🔴';
+    document.getElementById('pir-status-text').textContent = '偵測到移動 (1)';
+    document.getElementById('pir-status-text').className = 'text-2xl font-bold text-red-400';
+    document.getElementById('pir-last-trigger').textContent = new Date().toLocaleTimeString();
+
+    // 3 秒後恢復顯示安全
+    clearTimeout(pirTimer);
+    pirTimer = setTimeout(() => {
+        document.getElementById('pir-icon').textContent = '🟢';
+        document.getElementById('pir-status-text').textContent = '安全 (0)';
+        document.getElementById('pir-status-text').className = 'text-2xl font-bold text-green-400';
+    }, 3000);
 }
 
 function updateSystemStatus(data) {

@@ -16,10 +16,12 @@ MQTT_USE_SSL = True
 TOPIC_SENSOR_LIGHT = "home/sensor/light"
 TOPIC_LIGHT_STATUS = "home/light/status"
 TOPIC_LIGHT_CONTROL = "home/light/control"
+TOPIC_SECURITY_PIR = "home/security/pir"
 
 # --- GPIO Pin ---
 LDR_PIN = 34      # 光敏電阻（ADC）
 LED_PIN = 2       # LED 輸出
+PIR_PIN = 27      # PIR 紅外線感測器
 
 # --- 閾值 ---
 LIGHT_THRESHOLD = 1000  # 亮度閾值（ADC 值 0-4095，越小越暗）

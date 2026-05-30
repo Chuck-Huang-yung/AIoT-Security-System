@@ -189,14 +189,14 @@ slide_title_bar(slide, "系統架構總覽")
 esp_card = add_shape(slide, Inches(0.5), Inches(1.8), Inches(3.5), Inches(3.2), border_color=ACCENT_GREEN)
 add_text(slide, Inches(0.8), Inches(1.9), Inches(3), Inches(0.4), "ESP32（MicroPython）", font_size=16, color=ACCENT_GREEN, bold=True)
 add_text(slide, Inches(0.8), Inches(2.3), Inches(3), Inches(0.3), "照明控制線路", font_size=13, color=GRAY)
-esp_items = ["光敏電阻（ADC 直讀）", "LED 自動/手動控制", "MQTT 發布亮度數據", "MQTT 訂閱控燈指令"]
+esp_items = ["PIR 紅外線感測器（GPIO 27）", "光敏電阻（ADC 直讀）", "LED 自動/手動控制", "MQTT 發布 PIR + 亮度數據", "MQTT 訂閱控燈指令"]
 add_bullet_text(slide, Inches(0.8), Inches(2.7), Inches(3), Inches(2.2), esp_items, font_size=13, bullet_color=ACCENT_GREEN)
 
 # RPi 區塊
 rpi_card = add_shape(slide, Inches(0.5), Inches(5.2), Inches(3.5), Inches(2.0), border_color=ACCENT_BLUE)
 add_text(slide, Inches(0.8), Inches(5.3), Inches(3), Inches(0.4), "Raspberry Pi（Python）", font_size=16, color=ACCENT_BLUE, bold=True)
 add_text(slide, Inches(0.8), Inches(5.7), Inches(3), Inches(0.3), "安防偵測線路", font_size=13, color=GRAY)
-rpi_items = ["PIR 紅外線感測器", "USB Webcam + OpenCV", "Discord 警報推播"]
+rpi_items = ["USB Webcam + OpenCV DNN", "MobileNet SSD 人形偵測", "MQTT 接收 PIR 觸發訊號", "Discord 警報推播"]
 add_bullet_text(slide, Inches(0.8), Inches(6.1), Inches(3), Inches(1.5), rpi_items, font_size=13, bullet_color=ACCENT_BLUE)
 
 # MQTT Broker 中間
@@ -233,14 +233,14 @@ for x, y, text, color in arrows:
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide)
-slide_title_bar(slide, "線路一：安防偵測流程", "Raspberry Pi — PIR → Camera → OpenCV → MQTT → Discord")
+slide_title_bar(slide, "線路一：安防偵測流程", "ESP32 PIR → MQTT → RPi Camera → MobileNet SSD → Discord")
 
 # 流程步驟卡片
 steps = [
-    ("1", "PIR 偵測", "紅外線感測器\n偵測人體移動", ACCENT_BLUE),
-    ("2", "攝影機擷取", "USB Webcam\n擷取即時畫面", ACCENT_GREEN),
-    ("3", "OpenCV 辨識", "HOG + SVM\n人形偵測演算法", ACCENT_PURPLE),
-    ("4", "截圖儲存", "Base64 編碼\n本地備份", ACCENT_YELLOW),
+    ("1", "ESP32 PIR", "紅外線感測器\nGPIO 27 偵測移動", ACCENT_GREEN),
+    ("2", "MQTT 觸發", "發布 PIR 訊號\nRPi 接收觸發", ACCENT_PURPLE),
+    ("3", "連拍驗證", "USB Webcam\n連拍 3 張照片", ACCENT_BLUE),
+    ("4", "MobileNet SSD", "深度學習模型\n2/3 幀通過才算", ACCENT_YELLOW),
     ("5", "MQTT 發布", "警報事件\n+ 截圖影像", ACCENT_BLUE),
     ("6", "Discord 通知", "Webhook 推播\n含入侵截圖", ACCENT_RED),
 ]
@@ -271,7 +271,7 @@ for i, (num, title, desc, color) in enumerate(steps):
 add_shape(slide, Inches(0.5), Inches(4.5), Inches(12.3), Inches(1.2), border_color=ACCENT_YELLOW)
 add_text(slide, Inches(0.8), Inches(4.6), Inches(11.5), Inches(0.35), "防抖動機制", font_size=16, color=ACCENT_YELLOW, bold=True)
 add_text(slide, Inches(0.8), Inches(5.0), Inches(11.5), Inches(0.6),
-         "冷卻時間 15 秒：PIR 觸發後 15 秒內不重複處理，避免連續誤觸發導致系統過載。SR505 本身為不可重觸發型，延遲約 8 秒。",
+         "多幀驗證：連拍 3 張，至少 2 張偵測到人形才觸發警報。冷卻時間 15 秒，避免連續誤觸發。ESP32 PIR 額外設定 10 秒冷卻。",
          font_size=14, color=LIGHT_GRAY)
 
 
@@ -280,15 +280,15 @@ add_text(slide, Inches(0.8), Inches(5.0), Inches(11.5), Inches(0.6),
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide)
-slide_title_bar(slide, "線路二：自動照明流程", "ESP32（MicroPython）— 光敏電阻 → LED 自動控制 → MQTT")
+slide_title_bar(slide, "線路二：智慧照明流程", "ESP32（MicroPython）— PIR + 光敏電阻 → 智慧 LED 控制 → MQTT")
 
 steps2 = [
-    ("1", "WiFi 連線", "boot.py\n自動連線熱點", ACCENT_BLUE),
-    ("2", "MQTT 連線", "HiveMQ Cloud\nTLS 加密", ACCENT_PURPLE),
-    ("3", "ADC 讀取", "光敏電阻\n亮度值 0-4095", ACCENT_GREEN),
-    ("4", "自動控制", "亮度 < 閾值 → 開燈\n亮度 ≥ 閾值 → 關燈", ACCENT_YELLOW),
-    ("5", "MQTT 發布", "亮度數據\n+ 燈光狀態", ACCENT_BLUE),
-    ("6", "遠端控制", "Dashboard 手動\n開/關燈指令", ACCENT_RED),
+    ("1", "PIR 偵測", "GPIO 27 偵測\n是否有人在場", ACCENT_BLUE),
+    ("2", "ADC 讀取", "光敏電阻\n亮度值 0-4095", ACCENT_GREEN),
+    ("3", "智慧判斷", "有人 + 暗 → 開燈\n無人 → 關燈", ACCENT_YELLOW),
+    ("4", "MQTT 發布", "亮度數據\n+ 燈光 + PIR 狀態", ACCENT_PURPLE),
+    ("5", "遠端控制", "Dashboard 手動\n開/關燈指令", ACCENT_RED),
+    ("6", "手動覆蓋", "手動控制後\n暫停自動 60 秒", ACCENT_BLUE),
 ]
 
 for i, (num, title, desc, color) in enumerate(steps2):
@@ -315,7 +315,7 @@ for i, (num, title, desc, color) in enumerate(steps2):
 add_shape(slide, Inches(0.5), Inches(4.5), Inches(12.3), Inches(1.2), border_color=ACCENT_GREEN)
 add_text(slide, Inches(0.8), Inches(4.6), Inches(11.5), Inches(0.35), "手動覆蓋機制", font_size=16, color=ACCENT_GREEN, bold=True)
 add_text(slide, Inches(0.8), Inches(5.0), Inches(11.5), Inches(0.6),
-         "Dashboard 手動控燈後，自動模式暫停 60 秒，避免自動控制立即覆蓋手動操作。超時後自動恢復感測控制。每秒檢查 MQTT 訊息，確保控制指令即時響應。",
+         "智慧照明：有人時依亮度決定是否開燈（供攝影機夜間辨識），無人時自動關燈。Dashboard 手動控燈後暫停自動 60 秒。",
          font_size=14, color=LIGHT_GRAY)
 
 
@@ -328,7 +328,8 @@ slide_title_bar(slide, "MQTT 通訊架構", "Topic 設計與訊息格式")
 
 # Topic 表格
 topics = [
-    ("home/security/alert", "RPi", "Dashboard\nDiscord", '{"timestamp":"...",\n "confidence":0.85}', "入侵警報", ACCENT_RED),
+    ("home/security/pir", "ESP32", "RPi\nDashboard", '{"triggered":true,\n "timestamp":12345}', "PIR 觸發", ACCENT_BLUE),
+    ("home/security/alert", "RPi", "Dashboard", '{"timestamp":"...",\n "confidence":0.85}', "入侵警報", ACCENT_RED),
     ("home/security/snapshot", "RPi", "Dashboard", '{"timestamp":"...",\n "image":"<Base64>"}', "截圖影像", ACCENT_RED),
     ("home/sensor/light", "ESP32", "Dashboard", '{"value": 2048}', "亮度數值", ACCENT_GREEN),
     ("home/light/status", "ESP32", "Dashboard", '{"status": "on"}', "燈光狀態", ACCENT_GREEN),
@@ -355,7 +356,7 @@ line.line.fill.background()
 
 # 表格內容
 for row_i, (topic, pub, sub, payload, desc, color) in enumerate(topics):
-    y = Inches(2.3 + row_i * 0.75)
+    y = Inches(2.3 + row_i * 0.65)
     row_data = [topic, pub, sub, payload, desc]
     x_pos = x_start
     for col_i, (data, w) in enumerate(zip(row_data, header_widths)):
@@ -386,29 +387,30 @@ add_text(slide, Inches(0.8), Inches(1.9), Inches(5), Inches(0.4), "Raspberry Pi 
 
 rpi_parts = [
     "Raspberry Pi 4 Model B — 安防主控",
-    "USB Webcam — 影像擷取（OpenCV）",
-    "PIR 紅外線感測器（HW-456 SR505）— GPIO 17",
+    "USB Webcam (Logitech C270) — 影像擷取",
+    "OpenCV DNN + MobileNet SSD 人形偵測",
     "供電：5V USB-C",
 ]
 add_bullet_text(slide, Inches(0.8), Inches(2.5), Inches(5.2), Inches(2.5), rpi_parts, font_size=15, bullet_color=ACCENT_BLUE)
 
-rpi_pin = "PIR 接線：\n  OUT → GPIO 17\n  GND → GND\n  VCC → 5V"
-add_code_block(slide, Inches(0.8), Inches(4.8), Inches(5.2), Inches(1.2), rpi_pin, font_size=12)
+rpi_note = "無需 GPIO 感測器\nPIR 觸發訊號由 ESP32\n透過 MQTT 遠端傳送"
+add_code_block(slide, Inches(0.8), Inches(4.8), Inches(5.2), Inches(1.2), rpi_note, font_size=12)
 
 # ESP32 硬體
 esp_hw = add_shape(slide, Inches(7.0), Inches(1.8), Inches(5.8), Inches(4.5), border_color=ACCENT_GREEN)
 add_text(slide, Inches(7.3), Inches(1.9), Inches(5), Inches(0.4), "ESP32 端", font_size=20, color=ACCENT_GREEN, bold=True)
 
 esp_parts = [
-    "ESP32-WROOM-32 — 照明主控",
+    "ESP32-WROOM-32 — 感測 + 照明主控",
+    "PIR 紅外線感測器 (SR505) — GPIO 27",
     "光敏電阻（LDR）— GPIO 34（ADC）",
     "LED — GPIO 2",
     "供電：USB（獨立運作）",
 ]
 add_bullet_text(slide, Inches(7.3), Inches(2.5), Inches(5.2), Inches(2.5), esp_parts, font_size=15, bullet_color=ACCENT_GREEN)
 
-esp_pin = "LDR 接線：\n  一端 → 3.3V\n  另一端 → GPIO 34 + 10K 下拉電阻\nLED 接線：\n  長腳 → GPIO 2（經電阻）\n  短腳 → GND"
-add_code_block(slide, Inches(7.3), Inches(4.5), Inches(5.2), Inches(1.5), esp_pin, font_size=12)
+esp_pin = "PIR：OUT→GPIO 27, VCC→5V, GND→GND\nLDR：一端→3.3V, 另一端→GPIO 34+10K\nLED：長腳→GPIO 2（經電阻）, 短腳→GND"
+add_code_block(slide, Inches(7.3), Inches(4.8), Inches(5.2), Inches(1.5), esp_pin, font_size=11)
 
 
 # ============================================================
@@ -421,10 +423,10 @@ slide_title_bar(slide, "軟體技術棧")
 tech_categories = [
     ("Raspberry Pi", ACCENT_BLUE, [
         ("Python 3", "主程式語言"),
-        ("OpenCV", "HOG+SVM 人形偵測"),
-        ("paho-mqtt", "MQTT Client（TLS）"),
-        ("RPi.GPIO", "GPIO 控制"),
+        ("OpenCV DNN", "MobileNet SSD 人形偵測"),
+        ("paho-mqtt v2", "MQTT Client（TLS）"),
         ("requests", "Discord Webhook"),
+        ("threading", "多線程安防 + 狀態"),
     ]),
     ("ESP32", ACCENT_GREEN, [
         ("MicroPython", "統一 Python 生態"),
@@ -458,46 +460,45 @@ for col_i, (cat_name, color, techs) in enumerate(tech_categories):
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide)
-slide_title_bar(slide, "核心程式碼 — RPi 安防主迴圈", "main.py → security_loop()")
+slide_title_bar(slide, "核心程式碼 — RPi 安防主迴圈", "main.py → security_loop()（MQTT 觸發）")
 
-code_security = """def security_loop():
-    pir.setup()
+code_security = """pir_triggered = threading.Event()
+
+def on_pir_trigger(topic, payload):
+    pir_triggered.set()  # ESP32 PIR 觸發
+
+def security_loop():
     capture.init()
-    last_trigger_time = 0
     COOLDOWN = 15
 
     while running:
-        if pir.detect():
-            now = time.time()
-            if now - last_trigger_time < COOLDOWN:
-                time.sleep(1)
-                continue
+        if pir_triggered.wait(timeout=1):
+            pir_triggered.clear()
 
-            last_trigger_time = now
-            frame = capture.capture_frame()
-            detected, boxes, confidence = detector.detect_person(frame)
+            # 多幀驗證：連拍 3 張
+            detect_count = 0
+            for attempt in range(3):
+                frame = capture.capture_frame()
+                detected, boxes, conf = \\
+                    detector.detect_person(frame)
+                if detected:
+                    detect_count += 1
+                time.sleep(0.3)
 
-            if detected:
-                frame = detector.draw_boxes(frame, boxes)
-                img_base64 = capture.capture_to_base64(frame)
-                capture.save_snapshot(frame)
-
-                mqtt_client.publish("home/security/alert", {
-                    "timestamp": timestamp,
-                    "confidence": round(confidence, 2),
-                })
+            if detect_count >= 2:  # 2/3 通過
+                mqtt_client.publish(TOPIC_ALERT, {...})
                 discord_bot.send_alert(
-                    f"偵測到入侵！信心值: {confidence:.0%}",
-                    image_base64=img_base64,
-                )"""
+                    f"偵測到入侵！信心值: {conf:.0%}",
+                    image_base64=img_base64)
+            time.sleep(COOLDOWN)"""
 
 add_code_block(slide, Inches(0.5), Inches(1.7), Inches(7.5), Inches(5.5), code_security, font_size=11)
 
 # 右側說明
 notes = [
-    ("PIR 觸發", "GPIO 17 偵測到高電位\n表示有人體移動", ACCENT_BLUE),
-    ("冷卻機制", "15 秒內不重複觸發\n防止連續誤報", ACCENT_YELLOW),
-    ("OpenCV 辨識", "HOG + SVM 演算法\n判斷是否為人形", ACCENT_PURPLE),
+    ("MQTT 觸發", "ESP32 PIR 偵測移動\n透過 MQTT 遠端觸發", ACCENT_GREEN),
+    ("多幀驗證", "連拍 3 張照片\n至少 2/3 通過才警報", ACCENT_YELLOW),
+    ("MobileNet SSD", "深度學習模型\n精準人形偵測", ACCENT_PURPLE),
     ("多管道通知", "MQTT → Dashboard\nWebhook → Discord", ACCENT_RED),
 ]
 for i, (title, desc, color) in enumerate(notes):
@@ -512,47 +513,45 @@ for i, (title, desc, color) in enumerate(notes):
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide)
-slide_title_bar(slide, "核心程式碼 — ESP32 照明控制", "esp32/main.py — MicroPython")
+slide_title_bar(slide, "核心程式碼 — ESP32 PIR + 智慧照明", "esp32/main.py — MicroPython")
 
 code_esp32 = """# 硬體初始化
+pir = Pin(27, Pin.IN, Pin.PULL_DOWN)
 ldr = ADC(Pin(34))
 ldr.atten(ADC.ATTN_11DB)  # 0-3.3V, ADC 0-4095
 led = Pin(2, Pin.OUT)
 
-# 主迴圈
 while True:
     ldr_value = ldr.read()
+    pir_value = pir.value()
 
     # 手動覆蓋超時，恢復自動
     if manual_override and \\
-       (time.time() - manual_override_time > 60):
+       (now - manual_override_time > 60):
         manual_override = False
 
-    # 自動控制（手動模式下跳過）
+    # 智慧照明（手動模式下跳過）
     if not manual_override:
-        if ldr_value < LIGHT_THRESHOLD:
-            led.value(1)   # 開燈
-            led_status = "on"
+        if pir_value == 1:
+            # 有人 + 暗 → 開燈（供攝影機夜間辨識）
+            if ldr_value < LIGHT_THRESHOLD:
+                set_led(client, True)
         else:
-            led.value(0)   # 關燈
-            led_status = "off"
+            set_led(client, False)  # 沒人 → 關燈
 
-    # 發布亮度數據
-    client.publish("home/sensor/light",
-                   json.dumps({"value": ldr_value}))
-
-    # 每秒檢查 MQTT（控燈指令）
-    for _ in range(PUBLISH_INTERVAL):
-        client.check_msg()
-        time.sleep(1)"""
+    # PIR 觸發 → MQTT 通知 RPi 拍照
+    if pir_value == 1 and \\
+       (now - last_pir_time >= PIR_COOLDOWN):
+        client.publish("home/security/pir",
+            json.dumps({"triggered": True}))"""
 
 add_code_block(slide, Inches(0.5), Inches(1.7), Inches(7.5), Inches(5.5), code_esp32, font_size=11)
 
 notes2 = [
-    ("ADC 讀取", "ESP32 內建 12-bit ADC\n直讀光敏電阻 0-4095", ACCENT_GREEN),
-    ("自動控制", "亮度低於閾值自動開燈\n高於閾值自動關燈", ACCENT_YELLOW),
+    ("PIR 偵測", "GPIO 27 偵測人體移動\n觸發 MQTT 通知 RPi", ACCENT_GREEN),
+    ("智慧照明", "有人+暗→開燈\n無人→關燈（省電）", ACCENT_YELLOW),
     ("手動覆蓋", "Dashboard 控制後\n暫停自動 60 秒", ACCENT_PURPLE),
-    ("即時響應", "每秒檢查 MQTT 訊息\n確保控燈指令即時", ACCENT_BLUE),
+    ("MQTT 觸發", "PIR 觸發通知 RPi\n遠端啟動攝影機拍照", ACCENT_BLUE),
 ]
 for i, (title, desc, color) in enumerate(notes2):
     y = Inches(1.8 + i * 1.3)
@@ -571,11 +570,11 @@ slide_title_bar(slide, "Web Dashboard 即時監控", "Tailwind CSS + MQTT.js —
 # 功能區塊
 dashboard_features = [
     ("即時截圖", "subscribe home/security/snapshot\nBase64 圖片即時渲染", ACCENT_RED),
+    ("PIR 感測器", "subscribe home/security/pir\n即時顯示 PIR 狀態 0/1", ACCENT_BLUE),
     ("警報事件列表", "subscribe home/security/alert\n入侵警報即時顯示", ACCENT_RED),
     ("環境亮度", "subscribe home/sensor/light\nESP32 ADC 即時數據", ACCENT_GREEN),
     ("燈光控制", "publish home/light/control\n手動開關燈按鈕", ACCENT_YELLOW),
-    ("系統狀態", "subscribe home/system/status\nCPU 溫度、運行時間", ACCENT_BLUE),
-    ("連線設定", "MQTT Broker 設定\nlocalStorage 儲存", ACCENT_PURPLE),
+    ("系統狀態", "subscribe home/system/status\nCPU 溫度、運行時間", ACCENT_PURPLE),
 ]
 
 for i, (title, desc, color) in enumerate(dashboard_features):
@@ -644,19 +643,19 @@ add_bg(slide)
 slide_title_bar(slide, "專案目錄結構")
 
 dir_structure = """AIOT_final/
-├── config.py                  # RPi 設定檔（MQTT、GPIO、Discord）
+├── config.py                  # RPi 設定檔（MQTT、Discord）
 ├── main.py                    # RPi 主程式入口
 ├── .env                       # 敏感資訊（MQTT 密碼、Webhook URL）
 │
-├── sensors/
-│   └── pir.py                 # PIR 紅外線感測器模組
-│
 ├── camera/
 │   ├── capture.py             # 攝影機擷取（OpenCV）
-│   └── detector.py            # HOG+SVM 人形偵測
+│   ├── detector.py            # MobileNet SSD 人形偵測
+│   └── model/
+│       ├── deploy.prototxt    # 模型定義
+│       └── mobilenet_ssd.caffemodel  # 預訓練權重
 │
 ├── mqtt/
-│   └── client.py              # MQTT 連線封裝（paho-mqtt）
+│   └── client.py              # MQTT 連線封裝（paho-mqtt v2）
 │
 ├── notify/
 │   └── discord_bot.py         # Discord Webhook 通知
@@ -666,7 +665,7 @@ dir_structure = """AIOT_final/
 │
 ├── esp32/                     # ESP32 MicroPython
 │   ├── boot.py                # WiFi 自動連線
-│   ├── main.py                # 光敏+LED+MQTT 主程式
+│   ├── main.py                # PIR+光敏+LED+MQTT
 │   ├── config.py              # ESP32 設定
 │   └── lib/
 │       └── umqtt_simple.py    # MQTT 函式庫
@@ -699,23 +698,23 @@ slide_title_bar(slide, "開發過程與問題解決")
 problems = [
     ("PIR 持續誤觸發",
      "GPIO 浮接導致持續高電位",
-     "加入 pull-down 電阻 + 軟體冷卻機制（15 秒）",
+     "加入 pull-down 電阻 + 軟體冷卻機制",
      ACCENT_RED),
-    ("picamera2 與 USB Webcam 衝突",
-     "picamera2 嘗試用 libcamera 開啟 USB Webcam 導致凍結",
-     "硬編碼使用 OpenCV VideoCapture，跳過 picamera2",
+    ("Haar Cascade 誤判衣服為人",
+     "upperbody 偵測器誤報率高",
+     "改用 MobileNet SSD 深度學習模型",
      ACCENT_YELLOW),
-    ("ESP32 ussl 模組更名",
-     "MicroPython v1.25 將 ussl 更名為 ssl",
-     "umqtt_simple.py 加入 try/except 相容處理",
+    ("PIR 與攝影機位置衝突",
+     "同一位置角度難以兼顧",
+     "PIR 移至 ESP32，MQTT 遠端觸發 RPi",
      ACCENT_GREEN),
     ("手動控燈被自動覆蓋",
-     "手動開燈後，下一個 loop 自動模式立即關燈",
-     "加入 manual_override 機制，手動控制後暫停自動 60 秒",
+     "自動模式立即覆蓋手動操作",
+     "manual_override 機制，暫停自動 60 秒",
      ACCENT_BLUE),
-    ("WiFi WPA3 不相容",
-     "RPi 無法連線 WPA3 手機熱點",
-     "手機端改用 WPA2 安全性設定",
+    ("ESP32 ussl 模組更名",
+     "MicroPython v1.25 ussl→ssl",
+     "umqtt_simple.py 加入 try/except 相容",
      ACCENT_PURPLE),
 ]
 
@@ -735,10 +734,10 @@ add_bg(slide)
 slide_title_bar(slide, "系統成果")
 
 results = [
-    ("安防偵測完整流程", "PIR 偵測人體 → 攝影機截圖 → OpenCV 人形辨識\n→ MQTT 發布警報 → Discord 推播通知（含截圖）", ACCENT_RED),
-    ("自動照明控制", "光敏電阻即時偵測環境亮度 → 自動開/關 LED\n→ MQTT 發布狀態 → Dashboard 即時顯示", ACCENT_GREEN),
-    ("Web Dashboard 即時監控", "MQTT.js 直連雲端 Broker → 即時截圖、亮度數據\n燈光手動控制、系統狀態監控", ACCENT_YELLOW),
-    ("雲端通訊架構", "RPi + ESP32 雙裝置透過 HiveMQ Cloud 協同運作\n支援外網存取，手機可即時收到警報", ACCENT_BLUE),
+    ("安防偵測完整流程", "ESP32 PIR → MQTT → RPi 連拍 3 張 → MobileNet SSD\n多幀驗證（2/3 通過）→ Discord 推播（含截圖）", ACCENT_RED),
+    ("智慧照明控制", "PIR 偵測有人 + 光敏判斷環境暗 → 自動開燈\n供攝影機夜間辨識。Dashboard 可手動控制（60 秒覆蓋）", ACCENT_GREEN),
+    ("Web Dashboard 即時監控", "MQTT.js 直連雲端 → 即時截圖、PIR 狀態、亮度數據\n燈光手動控制、警報記錄、系統狀態監控", ACCENT_YELLOW),
+    ("雲端分散式架構", "PIR 在 ESP32、攝影機在 RPi，MQTT 解耦\n支援外網存取 + systemd 開機自啟動", ACCENT_BLUE),
 ]
 
 for i, (title, desc, color) in enumerate(results):

@@ -15,6 +15,7 @@ MQTT_USE_TLS = True
 # --- MQTT Topics ---
 TOPIC_SECURITY_ALERT = "home/security/alert"
 TOPIC_SECURITY_SNAPSHOT = "home/security/snapshot"
+TOPIC_SECURITY_PIR = "home/security/pir"
 TOPIC_SENSOR_LIGHT = "home/sensor/light"
 TOPIC_LIGHT_STATUS = "home/light/status"
 TOPIC_LIGHT_CONTROL = "home/light/control"
