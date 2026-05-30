@@ -22,3 +22,9 @@ Thumbs.db
 
 # 對話紀錄
 claude_conversation.md
+
+# Office 暫存檔
+~$*
+
+# Claude
+.claude/
