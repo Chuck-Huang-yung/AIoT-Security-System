@@ -31,6 +31,7 @@ AIoT_Smart_Security/
 │   └── index.html          # Tailwind CSS + MQTT.js 即時儀表板
 ├── config.py               # 系統全域設定檔
 └── main.py                 # Raspberry Pi 邊緣運算主程式入口
+```
 ---
 
 ## ✨ 系統核心亮點與深度技術解析
