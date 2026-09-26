@@ -5,11 +5,15 @@
 
 本架構目前已於教室場域完成概念驗證 (PoC) 與初步實作，具備高擴充性，未來可無痛導入大型「畜牧業與農田」等規模化場域。
 
+---
+
 ## 🛠️ 技術棧 (Tech Stack)
 * **邊緣運算與 AI (Raspberry Pi)：** Python 3, OpenCV, MobileNet SSD (Caffe Model)
 * **微控制器與感測 (ESP32)：** MicroPython, PWM 伺服馬達控制, ADC 類比訊號處理
 * **通訊協定與雲端：** MQTT (HiveMQ Cloud Broker), TLS/SSL 加密連線
 * **前端與警報：** Serverless Web Dashboard (HTML/JS + MQTT.js), Discord Webhook
+  
+---
 
 ## 📂 專案模組化結構 (Project Structure)
 ```text
@@ -32,6 +36,7 @@ AIoT_Smart_Security/
 ├── config.py               # 系統全域設定檔
 └── main.py                 # Raspberry Pi 邊緣運算主程式入口
 ```
+
 ---
 
 ## ✨ 系統核心亮點與深度技術解析
