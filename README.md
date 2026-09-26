@@ -16,6 +16,12 @@
 
 ---
 
+## ⚡ 開發角色與核心貢獻 (Role & Contribution)**
+ * **團隊規模：** 5 人專題團隊
+ * **我的核心負責項目：** 擔任**系統整合與前端監控頁面設計**。負責導入 MQTT 雲端通訊協定（HiveMQ），打通 ESP32 微控制器與樹莓派邊緣運算端的雙向溝通；並開發 Serverless Web Dashboard，實現跨網域即時監控與遠端硬體防衝突控制。
+
+---
+
 ## 🛠️ 技術棧 (Tech Stack)
 * **邊緣運算與 AI (Raspberry Pi)：** Python 3, OpenCV, MobileNet SSD (Caffe Model)
 * **微控制器與感測 (ESP32)：** MicroPython, PWM 伺服馬達控制, ADC 類比訊號處理
