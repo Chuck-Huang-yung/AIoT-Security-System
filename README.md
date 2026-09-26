@@ -7,6 +7,8 @@
 ![MQTT](https://img.shields.io/badge/MQTT-HiveMQ-660066?logo=mqtt&logoColor=white)
 ![OpenCV](https://img.shields.io/badge/OpenCV-MobileNet%20SSD-5C3EE8?logo=opencv&logoColor=white)
 
+---
+
 ## 💡 專案簡介
 本專案初衷源於「校園天台生態園」的夜間管理痛點。為解決戶外缺乏照明、長明燈耗能及防盜監控需求，本系統結合「架構解耦 (Decoupling)」與「邊緣運算 (Edge AI)」思維，打造「人走過即亮」並同步啟動 AI 人形辨識的智慧安防系統。
 
