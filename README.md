@@ -11,6 +11,26 @@
 * **通訊協定與雲端：** MQTT (HiveMQ Cloud Broker), TLS/SSL 加密連線
 * **前端與警報：** Serverless Web Dashboard (HTML/JS + MQTT.js), Discord Webhook
 
+## 📂 專案模組化結構 (Project Structure)
+```text
+AIoT_Smart_Security/
+├── esp32/                  # ESP32 微控制器端 (MicroPython)
+│   ├── boot.py             # WiFi 自動連線腳本
+│   └── main.py             # PIR、光敏、微型馬達與 MQTT 通訊主邏輯
+├── camera/                 # 視覺與 AI 辨識模組
+│   ├── capture.py          # OpenCV 影像擷取
+│   └── detector.py         # MobileNet SSD 人形偵測核心
+├── model/                  # 深度學習模型檔
+│   ├── deploy.prototxt     # 模型結構定義
+│   └── mobilenet_ssd.caffemodel # 預訓練權重
+├── mqtt/                   # 雲端通訊模組
+│   └── client.py           # MQTT 連線封裝 (TLS 加密)
+├── notify/                 # 警報模組
+│   └── discord_bot.py      # Discord Webhook 即時影像推播
+├── web/                    # Serverless 監控前端
+│   └── index.html          # Tailwind CSS + MQTT.js 即時儀表板
+├── config.py               # 系統全域設定檔
+└── main.py                 # Raspberry Pi 邊緣運算主程式入口
 ---
 
 ## ✨ 系統核心亮點與深度技術解析
