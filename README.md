@@ -57,7 +57,7 @@ AIoT_Smart_Security/
 
 ---
 
-## ✨ 系統核心亮點與深度技術解析
+## ✨ 系統核心亮點與深度技術解析 (Technical Highlights)
 
 ### 1. 分散式架構與 MQTT 跨裝置通訊 (Decoupling)
 屏除傳統單一開發板全包的作法，將「感測控制端 (ESP32)」與「核心運算端 (樹莓派)」徹底物理分離。
