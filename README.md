@@ -16,7 +16,7 @@
 
 ---
 
-## ⚡開發角色與核心貢獻 (Role & Contribution)
+## ⚡開發角色與核心貢獻 
  * **團隊規模：** 5 人專題團隊
  * **我的核心負責項目：** 擔任**系統整合與前端監控頁面設計**
    * 負責導入 MQTT 雲端通訊協定（HiveMQ）。
@@ -25,7 +25,7 @@
 
 ---
 
-## 🛠️ 技術棧 (Tech Stack)
+## 🛠️ 技術棧 
 * **邊緣運算與 AI (Raspberry Pi)：** Python 3, OpenCV, MobileNet SSD (Caffe Model)
 * **微控制器與感測 (ESP32)：** MicroPython, PWM 伺服馬達控制, ADC 類比訊號處理
 * **通訊協定與雲端：** MQTT (HiveMQ Cloud Broker), TLS/SSL 加密連線
@@ -33,7 +33,7 @@
   
 ---
 
-## 📂 專案模組化結構 (Project Structure)
+## 📂 專案模組化結構 
 ```text
 AIoT_Smart_Security/
 ├── esp32/                  # ESP32 微控制器端 (MicroPython)
@@ -57,7 +57,7 @@ AIoT_Smart_Security/
 
 ---
 
-## ✨ 系統核心亮點與深度技術解析 (Technical Highlights)
+## ✨ 系統核心亮點與深度技術解析 
 
 ### 1. 分散式架構與 MQTT 跨裝置通訊 (Decoupling)
 屏除傳統單一開發板全包的作法，將「感測控制端 (ESP32)」與「核心運算端 (樹莓派)」徹底物理分離。
@@ -81,7 +81,7 @@ AIoT_Smart_Security/
 
 ---
 
-## 🔌 硬體接線與腳位配置 (Hardware Pinout)
+## 🔌 硬體接線與腳位配置 
 
 **ESP32-WROOM-32 (感測與控制節點)**
 * `GPIO 27 (IN)`: PIR 紅外線人體感測器 (配置下拉電阻)
